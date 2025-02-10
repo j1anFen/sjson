@@ -2,13 +2,21 @@
 package sjson
 
 import (
-	jsongo "encoding/json"
+	jsoniter "github.com/json-iterator/go"
 	"sort"
 	"strconv"
 	"unsafe"
 
 	"github.com/tidwall/gjson"
 )
+
+var jsonIter = jsoniter.Config{
+	UseNumber:              true,  // 关键：将数字保留为原始字符串形式
+	DisallowUnknownFields:  false, // 允许未知字段
+	CaseSensitive:          true,  // 严格区分大小写
+	EscapeHTML:             false, // 不转义HTML字符
+	ValidateJsonRawMessage: true,  // 保留原始JSON格式
+}.Froze()
 
 type errorType struct {
 	msg string
@@ -123,7 +131,7 @@ func mustMarshalString(s string) bool {
 // appendStringify makes a json string and appends to buf.
 func appendStringify(buf []byte, s string) []byte {
 	if mustMarshalString(s) {
-		b, _ := jsongo.Marshal(s)
+		b, _ := jsonIter.Marshal(s)
 		return append(buf, b...)
 	}
 	buf = append(buf, '"')
@@ -427,19 +435,18 @@ func isOptimisticPath(path string) bool {
 //
 // A path is a series of keys separated by a dot.
 //
-//  {
-//    "name": {"first": "Tom", "last": "Anderson"},
-//    "age":37,
-//    "children": ["Sara","Alex","Jack"],
-//    "friends": [
-//      {"first": "James", "last": "Murphy"},
-//      {"first": "Roger", "last": "Craig"}
-//    ]
-//  }
-//  "name.last"          >> "Anderson"
-//  "age"                >> 37
-//  "children.1"         >> "Alex"
-//
+//	{
+//	  "name": {"first": "Tom", "last": "Anderson"},
+//	  "age":37,
+//	  "children": ["Sara","Alex","Jack"],
+//	  "friends": [
+//	    {"first": "James", "last": "Murphy"},
+//	    {"first": "Roger", "last": "Craig"}
+//	  ]
+//	}
+//	"name.last"          >> "Anderson"
+//	"age"                >> 37
+//	"children.1"         >> "Alex"
 func Set(json, path string, value interface{}) (string, error) {
 	return SetOptions(json, path, value, nil)
 }
@@ -661,7 +668,7 @@ func SetBytesOptions(json []byte, path string, value interface{},
 	var err error
 	switch v := value.(type) {
 	default:
-		b, merr := jsongo.Marshal(value)
+		b, merr := jsonIter.Marshal(value)
 		if merr != nil {
 			return nil, merr
 		}
